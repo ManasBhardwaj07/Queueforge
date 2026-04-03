@@ -13,7 +13,7 @@ Distributed job processing backend built with Node.js, Express, BullMQ, Redis, a
   - Redis/BullMQ is execution layer
   - Worker updates MongoDB state (`WAITING -> ACTIVE -> COMPLETED/FAILED`)
   - Edge-case handling and tests verified
-- Phase 3: In progress (implemented and verified locally, not committed)
+- Phase 3: Completed
   - Retry engine with exponential backoff at enqueue
   - Typed failure classification (`RetryableError`, `PermanentError`)
   - Explicit terminal failure semantics (`PERMANENT_ERROR`, `MAX_RETRIES_REACHED`)
