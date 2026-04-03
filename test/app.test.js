@@ -113,8 +113,9 @@ test('POST /jobs rejects invalid job payloads', async () => {
     const body = await response.json();
 
     assert.equal(response.status, 400);
-    assert.equal(body.error, 'Invalid job request.');
-    assert.ok(body.details.some((message) => message.includes('recipientEmail')));
+    assert.equal(body.error.code, 'INVALID_PAYLOAD');
+    assert.equal(body.error.message, 'Invalid job request.');
+    assert.ok(body.error.details.some((message) => message.includes('recipientEmail')));
   } finally {
     await server.close();
   }
@@ -167,7 +168,8 @@ test('GET /jobs/:id returns 404 for unknown jobs', async () => {
     const body = await response.json();
 
     assert.equal(response.status, 404);
-    assert.equal(body.error, 'Job not found.');
+    assert.equal(body.error.code, 'JOB_NOT_FOUND');
+    assert.equal(body.error.message, 'Job not found.');
   } finally {
     await server.close();
   }
@@ -190,7 +192,8 @@ test('POST /jobs rejects malformed JSON', async () => {
     const body = await response.json();
 
     assert.equal(response.status, 400);
-    assert.equal(body.error, 'Invalid JSON payload.');
+    assert.equal(body.error.code, 'INVALID_JSON');
+    assert.equal(body.error.message, 'Invalid JSON payload.');
   } finally {
     await server.close();
   }

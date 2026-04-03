@@ -2,18 +2,19 @@ require('dotenv').config();
 
 const http = require('http');
 const { createApp } = require('./app');
-const { loadEnv } = require('./config/env');
+const { loadEnv, validateEnv } = require('./config/env');
 const { createRedisConnection, closeRedisConnection } = require('./config/redis');
 const { connectMongoDB, closeMongoDB } = require('./config/mongodb');
 const { createJobService } = require('./services/jobService');
 
 async function startServer() {
-  const env = loadEnv();
+  const env = validateEnv(loadEnv());
   await connectMongoDB(env.mongodb);
   const connection = createRedisConnection(env.redis);
   const jobService = createJobService({
     queueName: env.queueName,
     connection,
+    retryConfig: env.retry,
   });
   const app = createApp({ jobService });
   const server = http.createServer(app);

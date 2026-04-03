@@ -8,6 +8,17 @@ const DEFAULT_JOB_PROCESSING_DELAY_MS = 300;
 const DEFAULT_MONGO_HOST = '127.0.0.1';
 const DEFAULT_MONGO_PORT = 27017;
 const DEFAULT_MONGO_DB = 'queueforge';
+const DEFAULT_JOB_MAX_ATTEMPTS = 3;
+const DEFAULT_JOB_RETRY_BACKOFF_DELAY_MS = 2000;
+const DEFAULT_STALE_ACTIVE_THRESHOLD_MS = 10 * 60 * 1000;
+
+function parseBoolean(value, fallback = false) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
+}
 
 function parseInteger(value, fallback) {
   if (value === undefined || value === null || value === '') {
@@ -40,9 +51,41 @@ function loadEnv(source = process.env) {
       username: source.MONGO_USERNAME || undefined,
       password: source.MONGO_PASSWORD || undefined,
     },
+    retry: {
+      maxAttempts: parseInteger(source.JOB_MAX_ATTEMPTS, DEFAULT_JOB_MAX_ATTEMPTS),
+      backoffDelayMs: parseInteger(source.JOB_RETRY_BACKOFF_DELAY_MS, DEFAULT_JOB_RETRY_BACKOFF_DELAY_MS),
+    },
+    dlq: {
+      enabled: parseBoolean(source.ENABLE_DLQ, false),
+      queueName: source.DLQ_QUEUE_NAME || 'queueforge-dlq',
+    },
+    reliability: {
+      staleActiveThresholdMs: parseInteger(source.JOB_STALE_ACTIVE_THRESHOLD_MS, DEFAULT_STALE_ACTIVE_THRESHOLD_MS),
+    },
   };
+}
+
+function validateEnv(env) {
+  if (!env.mongodb?.uri) {
+    throw new Error('MONGO_URI missing');
+  }
+
+  if (!env.redis?.host || !Number.isInteger(env.redis.port) || env.redis.port <= 0) {
+    throw new Error('Invalid Redis host/port configuration');
+  }
+
+  if (!Number.isInteger(env.retry?.maxAttempts) || env.retry.maxAttempts <= 0) {
+    throw new Error('Invalid RETRY_ATTEMPTS');
+  }
+
+  if (!Number.isInteger(env.retry?.backoffDelayMs) || env.retry.backoffDelayMs <= 0) {
+    throw new Error('Invalid RETRY_DELAY');
+  }
+
+  return env;
 }
 
 module.exports = {
   loadEnv,
+  validateEnv,
 };

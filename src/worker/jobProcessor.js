@@ -1,4 +1,5 @@
 const { JOB_TYPES } = require('../queue/jobTypes');
+const { RetryableError, PermanentError } = require('./jobErrors');
 
 function sleep(ms) {
   return new Promise((resolve) => {
@@ -19,10 +20,20 @@ function createJobProcessor({ logger = console, baseDelayMs = 300 } = {}) {
     const jobType = job.data?.type || 'unknown';
     const payload = job.data?.payload || {};
 
-    logger.info(`Starting job ${job.id} (${jobType})`);
-
     const delayMs = buildDelay(jobType, baseDelayMs);
     await sleep(delayMs);
+
+    if (payload.simulateFailure === 'retryable') {
+      throw new RetryableError('Simulated transient failure for retry flow.', {
+        code: 'SIM_RETRYABLE',
+      });
+    }
+
+    if (payload.simulateFailure === 'permanent') {
+      throw new PermanentError('Simulated permanent failure for terminal fail flow.', {
+        code: 'SIM_PERMANENT',
+      });
+    }
 
     let result;
     if (jobType === JOB_TYPES.EMAIL) {
@@ -42,8 +53,6 @@ function createJobProcessor({ logger = console, baseDelayMs = 300 } = {}) {
         jobType,
       };
     }
-
-    logger.info(`Completed job ${job.id} (${jobType})`);
 
     return {
       ...result,

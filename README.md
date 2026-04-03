@@ -13,6 +13,12 @@ Distributed job processing backend built with Node.js, Express, BullMQ, Redis, a
   - Redis/BullMQ is execution layer
   - Worker updates MongoDB state (`WAITING -> ACTIVE -> COMPLETED/FAILED`)
   - Edge-case handling and tests verified
+- Phase 3: In progress (implemented and verified locally, not committed)
+  - Retry engine with exponential backoff at enqueue
+  - Typed failure classification (`RetryableError`, `PermanentError`)
+  - Explicit terminal failure semantics (`PERMANENT_ERROR`, `MAX_RETRIES_REACHED`)
+  - Optional DLQ routing (behind env flag)
+  - Stale ACTIVE timeout safety check
 
 ## Tech Stack
 
@@ -26,12 +32,27 @@ Distributed job processing backend built with Node.js, Express, BullMQ, Redis, a
 
 Client -> API -> MongoDB (persist WAITING) -> Redis Queue -> Worker -> MongoDB (ACTIVE/COMPLETED/FAILED)
 
+Phase 3 reliability flow:
+
+Client -> API -> MongoDB WAITING -> BullMQ attempts/backoff -> Worker
+
+- retryable failure -> rethrow -> BullMQ retry
+- permanent failure -> terminal FAILED
+- retries exhausted -> terminal FAILED (MAX_RETRIES_REACHED)
+- optional terminal copy -> DLQ
+
 ## Job Lifecycle
 
 - `WAITING`
 - `ACTIVE`
 - `COMPLETED`
 - `FAILED`
+
+Terminal failure semantics:
+
+- `PERMANENT_ERROR`
+- `MAX_RETRIES_REACHED`
+- `STALE_ACTIVE_TIMEOUT`
 
 ## API Endpoints
 
@@ -89,6 +110,11 @@ MONGO_URI=mongodb://127.0.0.1:27017/queueforge
 JOBS_QUEUE_NAME=queueforge-jobs
 WORKER_CONCURRENCY=1
 JOB_PROCESSING_DELAY_MS=300
+JOB_MAX_ATTEMPTS=3
+JOB_RETRY_BACKOFF_DELAY_MS=2000
+ENABLE_DLQ=false
+DLQ_QUEUE_NAME=queueforge-dlq
+JOB_STALE_ACTIVE_THRESHOLD_MS=600000
 ```
 
 ### 4) Start API and worker
@@ -112,6 +138,20 @@ Run tests:
 ```powershell
 npm test
 ```
+
+Phase 3 runtime verification examples:
+
+1. Success path:
+- payload without `simulateFailure`
+2. Permanent failure path:
+- payload with `simulateFailure: "permanent"`
+3. Retry exhaustion path:
+- payload with `simulateFailure: "retryable"`
+
+Use `GET /jobs/:id` to verify terminal metadata:
+- `failedReason`
+- `finalFailureReason`
+- `retryAttemptsExhausted`
 
 ## Common Issues
 

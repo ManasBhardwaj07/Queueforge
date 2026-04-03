@@ -25,6 +25,8 @@ const jobSchema = new mongoose.Schema(
     attemptsStarted: { type: Number, default: 0 },
     result: { type: mongoose.Schema.Types.Mixed, default: null },
     failedReason: { type: String, default: null },
+    finalFailureReason: { type: String, default: null },
+    retryAttemptsExhausted: { type: Boolean, default: false },
     processedAt: { type: Date, default: null },
     finishedAt: { type: Date, default: null },
   },

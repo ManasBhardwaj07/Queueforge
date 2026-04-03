@@ -1,12 +1,12 @@
 require('dotenv').config();
 
-const { loadEnv } = require('./config/env');
+const { loadEnv, validateEnv } = require('./config/env');
 const { createRedisConnection, closeRedisConnection } = require('./config/redis');
 const { connectMongoDB, closeMongoDB } = require('./config/mongodb');
 const { createQueueWorker } = require('./worker/index');
 
 async function startWorker() {
-  const env = loadEnv();
+  const env = validateEnv(loadEnv());
   await connectMongoDB(env.mongodb);
   const connection = createRedisConnection(env.redis);
   const worker = createQueueWorker({
@@ -14,14 +14,8 @@ async function startWorker() {
     connection,
     concurrency: env.workerConcurrency,
     baseDelayMs: env.jobProcessingDelayMs,
-  });
-
-  worker.on('completed', (job) => {
-    console.log(`Worker completed job ${job.id}`);
-  });
-
-  worker.on('failed', (job, error) => {
-    console.error(`Worker failed job ${job?.id || 'unknown'}: ${error.message}`);
+    staleActiveThresholdMs: env.reliability.staleActiveThresholdMs,
+    dlq: env.dlq,
   });
 
   console.log(`Worker listening on queue ${env.queueName}`);

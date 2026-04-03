@@ -1,4 +1,5 @@
 const { Queue } = require('bullmq');
+const { randomUUID } = require('node:crypto');
 const { JobModel, JOB_STATUS } = require('../models/jobModel');
 
 function mapJobState(status) {
@@ -29,14 +30,26 @@ function toApiJob(document) {
     payload: document.payload || {},
     result: document.result ?? null,
     failedReason: document.failedReason ?? null,
+    retryAttemptsExhausted: document.retryAttemptsExhausted ?? false,
+    finalFailureReason: document.finalFailureReason ?? null,
   };
 }
 
-function createJobService({ queueName, connection, jobModel = JobModel, queueFactory = null }) {
+function createJobService({
+  queueName,
+  connection,
+  retryConfig,
+  jobModel = JobModel,
+  queueFactory = null,
+}) {
+  const effectiveRetryConfig = {
+    maxAttempts: Math.max(1, retryConfig?.maxAttempts ?? 3),
+    backoffDelayMs: Math.max(100, retryConfig?.backoffDelayMs ?? 2000),
+  };
+
   const queue = (queueFactory || ((name, options) => new Queue(name, options)))(queueName, {
     connection,
     defaultJobOptions: {
-      attempts: 1,
       removeOnComplete: false,
       removeOnFail: false,
     },
@@ -50,13 +63,28 @@ function createJobService({ queueName, connection, jobModel = JobModel, queueFac
     });
 
     try {
-      const queuedJob = await queue.add(input.type, {
-        type: input.type,
-        payload: input.payload,
-        dbId: String(createdDocument._id),
-      });
+      const publicJobId = randomUUID();
 
-      createdDocument.jobId = String(queuedJob.id);
+      const queuedJob = await queue.add(
+        input.type,
+        {
+          type: input.type,
+          payload: input.payload,
+          dbId: String(createdDocument._id),
+        },
+        {
+          jobId: publicJobId,
+          attempts: effectiveRetryConfig.maxAttempts,
+          backoff: {
+            type: 'exponential',
+            delay: effectiveRetryConfig.backoffDelayMs,
+          },
+        },
+      );
+
+      createdDocument.jobId = String(queuedJob.id || publicJobId);
+      createdDocument.retryAttemptsExhausted = false;
+      createdDocument.finalFailureReason = null;
       await createdDocument.save();
 
       return {
