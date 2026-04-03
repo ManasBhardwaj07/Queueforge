@@ -1,22 +1,39 @@
 const { Queue } = require('bullmq');
-const { JOB_TYPES } = require('../queue/jobTypes');
+const { JobModel, JOB_STATUS } = require('../models/jobModel');
 
-const STATUS_BY_BULLMQ_STATE = Object.freeze({
-  waiting: 'WAITING',
-  active: 'ACTIVE',
-  completed: 'COMPLETED',
-  failed: 'FAILED',
-  delayed: 'WAITING',
-  paused: 'WAITING',
-  'waiting-children': 'WAITING',
-});
+function mapJobState(status) {
+  if (!status) {
+    return 'UNKNOWN';
+  }
 
-function mapJobState(state) {
-  return STATUS_BY_BULLMQ_STATE[state] || 'UNKNOWN';
+  return status;
 }
 
-function createJobService({ queueName, connection }) {
-  const queue = new Queue(queueName, {
+function toApiJob(document) {
+  if (!document) {
+    return null;
+  }
+
+  const status = mapJobState(document.status);
+
+  return {
+    jobId: document.jobId,
+    type: document.type,
+    status,
+    rawState: status.toLowerCase(),
+    attemptsMade: document.attemptsMade ?? document.attempts ?? 0,
+    attemptsStarted: document.attemptsStarted ?? 0,
+    createdAt: document.createdAt ? new Date(document.createdAt).toISOString() : null,
+    processedAt: document.processedAt ? new Date(document.processedAt).toISOString() : null,
+    finishedAt: document.finishedAt ? new Date(document.finishedAt).toISOString() : null,
+    payload: document.payload || {},
+    result: document.result ?? null,
+    failedReason: document.failedReason ?? null,
+  };
+}
+
+function createJobService({ queueName, connection, jobModel = JobModel, queueFactory = null }) {
+  const queue = (queueFactory || ((name, options) => new Queue(name, options)))(queueName, {
     connection,
     defaultJobOptions: {
       attempts: 1,
@@ -26,49 +43,48 @@ function createJobService({ queueName, connection }) {
   });
 
   async function createJob(input) {
-    const job = await queue.add(
-      input.type,
-      {
+    const createdDocument = await jobModel.create({
+      type: input.type,
+      payload: input.payload,
+      status: JOB_STATUS.WAITING,
+    });
+
+    try {
+      const queuedJob = await queue.add(input.type, {
         type: input.type,
         payload: input.payload,
-        createdAt: new Date().toISOString(),
-      },
-      {
-        jobId: undefined,
-      },
-    );
+        dbId: String(createdDocument._id),
+      });
 
-    return {
-      jobId: job.id,
-      type: input.type,
-      status: 'WAITING',
-    };
+      createdDocument.jobId = String(queuedJob.id);
+      await createdDocument.save();
+
+      return {
+        jobId: createdDocument.jobId,
+        type: createdDocument.type,
+        status: createdDocument.status,
+      };
+    } catch (error) {
+      await jobModel.findByIdAndUpdate(createdDocument._id, {
+        $set: {
+          status: JOB_STATUS.FAILED,
+          failedReason: `Queue enqueue failed: ${error.message}`,
+          finishedAt: new Date(),
+        },
+      });
+
+      throw error;
+    }
   }
 
   async function getJob(jobId) {
-    const job = await queue.getJob(jobId);
+    const job = await jobModel.findOne({ jobId }).lean();
 
     if (!job) {
       return null;
     }
 
-    const rawState = await job.getState();
-    const status = mapJobState(rawState);
-
-    return {
-      jobId: job.id,
-      type: job.name || job.data?.type || JOB_TYPES.EMAIL,
-      status,
-      rawState,
-      attemptsMade: job.attemptsMade,
-      attemptsStarted: job.attemptsStarted,
-      createdAt: job.timestamp ? new Date(job.timestamp).toISOString() : null,
-      processedAt: job.processedOn ? new Date(job.processedOn).toISOString() : null,
-      finishedAt: job.finishedOn ? new Date(job.finishedOn).toISOString() : null,
-      payload: job.data?.payload || {},
-      result: job.returnvalue ?? null,
-      failedReason: job.failedReason ?? null,
-    };
+    return toApiJob(job);
   }
 
   async function close() {

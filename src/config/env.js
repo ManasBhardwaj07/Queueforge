@@ -5,6 +5,9 @@ const DEFAULT_REDIS_DB = 0;
 const DEFAULT_QUEUE_NAME = 'queueforge-jobs';
 const DEFAULT_WORKER_CONCURRENCY = 1;
 const DEFAULT_JOB_PROCESSING_DELAY_MS = 300;
+const DEFAULT_MONGO_HOST = '127.0.0.1';
+const DEFAULT_MONGO_PORT = 27017;
+const DEFAULT_MONGO_DB = 'queueforge';
 
 function parseInteger(value, fallback) {
   if (value === undefined || value === null || value === '') {
@@ -28,6 +31,14 @@ function loadEnv(source = process.env) {
       username: source.REDIS_USERNAME || undefined,
       password: source.REDIS_PASSWORD || undefined,
       db: parseInteger(source.REDIS_DB, DEFAULT_REDIS_DB),
+    },
+    mongodb: {
+      uri: source.MONGO_URI || '',
+      host: source.MONGO_HOST || DEFAULT_MONGO_HOST,
+      port: parseInteger(source.MONGO_PORT, DEFAULT_MONGO_PORT),
+      db: source.MONGO_DB || DEFAULT_MONGO_DB,
+      username: source.MONGO_USERNAME || undefined,
+      password: source.MONGO_PASSWORD || undefined,
     },
   };
 }

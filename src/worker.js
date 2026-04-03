@@ -2,10 +2,12 @@ require('dotenv').config();
 
 const { loadEnv } = require('./config/env');
 const { createRedisConnection, closeRedisConnection } = require('./config/redis');
+const { connectMongoDB, closeMongoDB } = require('./config/mongodb');
 const { createQueueWorker } = require('./worker/index');
 
 async function startWorker() {
   const env = loadEnv();
+  await connectMongoDB(env.mongodb);
   const connection = createRedisConnection(env.redis);
   const worker = createQueueWorker({
     queueName: env.queueName,
@@ -28,6 +30,7 @@ async function startWorker() {
     console.log(`Received ${signal}, shutting down worker...`);
     await worker.close();
     await closeRedisConnection(connection);
+    await closeMongoDB();
     process.exit(0);
   }
 

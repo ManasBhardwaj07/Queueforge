@@ -4,10 +4,12 @@ const http = require('http');
 const { createApp } = require('./app');
 const { loadEnv } = require('./config/env');
 const { createRedisConnection, closeRedisConnection } = require('./config/redis');
+const { connectMongoDB, closeMongoDB } = require('./config/mongodb');
 const { createJobService } = require('./services/jobService');
 
 async function startServer() {
   const env = loadEnv();
+  await connectMongoDB(env.mongodb);
   const connection = createRedisConnection(env.redis);
   const jobService = createJobService({
     queueName: env.queueName,
@@ -27,6 +29,7 @@ async function startServer() {
     server.close(async () => {
       await jobService.close();
       await closeRedisConnection(connection);
+      await closeMongoDB();
       process.exit(0);
     });
   }
