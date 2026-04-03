@@ -93,6 +93,24 @@ test('POST /jobs queues an email job', async () => {
   }
 });
 
+test('GET /health returns service health payload', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({ jobService, logger: { error() {} } });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/health`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.service, 'queueforge-backend');
+    assert.equal(typeof body.timestamp, 'string');
+  } finally {
+    await server.close();
+  }
+});
+
 test('POST /jobs rejects invalid job payloads', async () => {
   const jobService = createMockJobService();
   const app = createApp({ jobService, logger: { error() {} } });

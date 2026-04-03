@@ -1,0 +1,44 @@
+services:
+  mongo:
+    container_name: queueforge-mongo
+    image: mongo
+    ports:
+      - "27017:27017"
+
+  redis:
+    container_name: queueforge-redis
+    image: redis
+    ports:
+      - "6379:6379"
+
+  api:
+    container_name: queueforge-api
+    build: ./backend
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/.env.docker
+    depends_on:
+      - mongo
+      - redis
+
+  worker:
+    container_name: queueforge-worker
+    build: ./backend
+    command: npm run start:worker
+    env_file:
+      - ./backend/.env.docker
+    depends_on:
+      - mongo
+      - redis
+
+  frontend:
+    container_name: queueforge-frontend
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:5000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api

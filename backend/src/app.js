@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const { validateJobRequest } = require('./validation/jobs');
 
 function buildError(code, message, details) {
@@ -19,7 +20,16 @@ function buildError(code, message, details) {
 function createApp({ jobService, logger = console }) {
   const app = express();
 
+  app.use(cors());
   app.use(express.json());
+
+  app.get('/health', (req, res) => {
+    return res.status(200).json({
+      status: 'ok',
+      service: 'queueforge-backend',
+      timestamp: new Date().toISOString(),
+    });
+  });
 
   app.post('/jobs', async (req, res, next) => {
     try {
