@@ -12,22 +12,56 @@ function CreateJobPage({ apiBaseUrl }) {
   const [subject, setSubject] = useState('')
   const [reportName, setReportName] = useState('')
   const [createError, setCreateError] = useState('')
+  const [formError, setFormError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  function validateForm() {
+    if (jobType === 'email') {
+      if (!recipientEmail.trim()) {
+        return 'Recipient email is required.'
+      }
+
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailPattern.test(recipientEmail.trim())) {
+        return 'Enter a valid email address.'
+      }
+
+      return ''
+    }
+
+    if (!reportName.trim()) {
+      return 'Report name is required.'
+    }
+
+    if (reportName.trim().length < 3) {
+      return 'Report name must be at least 3 characters.'
+    }
+
+    return ''
+  }
 
   async function handleCreateJob(event) {
     event.preventDefault()
     setCreateError('')
+    setFormError('')
+
+    const validationMessage = validateForm()
+    if (validationMessage) {
+      setFormError(validationMessage)
+      return
+    }
+
     setIsSubmitting(true)
 
     try {
       const payload =
         jobType === 'email'
           ? {
-              recipientEmail,
-              subject,
+              recipientEmail: recipientEmail.trim(),
+              subject: subject.trim(),
             }
           : {
-              reportName,
+              reportName: reportName.trim(),
             }
 
       const createdJob = await jobsApi.createJob({
@@ -51,11 +85,13 @@ function CreateJobPage({ apiBaseUrl }) {
       <header className="page-header compact">
         <p className="tag">Step 1</p>
         <h1>Create Job</h1>
-        <p className="subtitle">Fill one form and you will be redirected to live tracking automatically.</p>
+        <p className="subtitle">Fill one short form. After submit, you will be redirected to live tracking automatically.</p>
       </header>
 
-      <article className="panel">
+      <article className="panel create-layout">
         <form className="stack" onSubmit={handleCreateJob}>
+          <p className="muted-note">Choose a job type and complete only the required fields.</p>
+
           <label>
             Type
             <select value={jobType} onChange={(event) => setJobType(event.target.value)}>
@@ -71,7 +107,10 @@ function CreateJobPage({ apiBaseUrl }) {
                 <input
                   type="email"
                   value={recipientEmail}
-                  onChange={(event) => setRecipientEmail(event.target.value)}
+                  onChange={(event) => {
+                    setRecipientEmail(event.target.value)
+                    if (formError) setFormError('')
+                  }}
                   placeholder="dev@example.com"
                   required
                 />
@@ -92,7 +131,10 @@ function CreateJobPage({ apiBaseUrl }) {
               <input
                 type="text"
                 value={reportName}
-                onChange={(event) => setReportName(event.target.value)}
+                onChange={(event) => {
+                  setReportName(event.target.value)
+                  if (formError) setFormError('')
+                }}
                 placeholder="daily-summary"
                 required
               />
@@ -102,9 +144,17 @@ function CreateJobPage({ apiBaseUrl }) {
           <button type="submit" disabled={isSubmitting}>
             {isSubmitting ? 'Creating and redirecting...' : 'Create Job'}
           </button>
+
+          {formError && <p className="error">{formError}</p>}
+          {createError && <p className="error">{createError}</p>}
         </form>
 
-        {createError && <p className="error">{createError}</p>}
+        <aside className="preview-column">
+          <section className="ops-card">
+            <h3>What happens next</h3>
+            <p>You will get a job ID, then we open the tracking view and refresh status automatically.</p>
+          </section>
+        </aside>
       </article>
     </section>
   )

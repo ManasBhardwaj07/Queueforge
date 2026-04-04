@@ -134,7 +134,7 @@ test('job processor throws typed permanent error for terminal failure simulation
 
 test('env parsing applies phase-3 reliability defaults and flags', () => {
   const env = loadEnv({
-    MONGO_URI: 'mongodb://127.0.0.1:27017/queueforge',
+    MONGO_URI: 'mongodb://mongo.test:27017/queueforge',
     REDIS_HOST: '127.0.0.1',
     REDIS_PORT: '6379',
     ENABLE_DLQ: 'true',
@@ -153,12 +153,12 @@ test('env validation fails fast when required settings are invalid', () => {
   );
 
   assert.throws(
-    () => validateEnv(loadEnv({ MONGO_URI: 'mongodb://127.0.0.1:27017/queueforge', REDIS_HOST: '', REDIS_PORT: '0' })),
+    () => validateEnv(loadEnv({ MONGO_URI: 'mongodb://mongo.test:27017/queueforge', REDIS_HOST: '', REDIS_PORT: '0' })),
     /Invalid Redis host\/port configuration/,
   );
 
   assert.throws(
-    () => validateEnv(loadEnv({ MONGO_URI: 'mongodb://127.0.0.1:27017/queueforge', JOB_MAX_ATTEMPTS: '0' })),
+    () => validateEnv(loadEnv({ MONGO_URI: 'mongodb://mongo.test:27017/queueforge', JOB_MAX_ATTEMPTS: '0' })),
     /Invalid RETRY_ATTEMPTS/,
   );
 });

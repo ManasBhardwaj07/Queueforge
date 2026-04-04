@@ -28,9 +28,16 @@ docker compose up --build -d
 
 Endpoints:
 
-- Frontend: `http://localhost:3000`
+- Frontend (Docker): `http://localhost:3001`
 - API: `http://localhost:5000`
 - Health: `http://localhost:5000/health`
+
+## Port Map (Conflict-Free)
+
+- Local backend API: `3000`
+- Local frontend dev (Vite): `5173`
+- Docker backend API: `5000`
+- Docker frontend: `3001`
 
 ## Next Step (Phase 5)
 

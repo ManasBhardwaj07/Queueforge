@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
-import { formatJsonValue, normalizeJob, saveJobId } from '../flowUtils'
+import { formatJsonValue, getSavedJobId, normalizeJob, saveJobId } from '../flowUtils'
 
 function ResultPage({ apiBaseUrl }) {
   const { jobId: routeJobId } = useParams()
+  const navigate = useNavigate()
   const jobsApi = useMemo(() => createJobsApi(apiBaseUrl), [apiBaseUrl])
 
   const [job, setJob] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [jobIdInput, setJobIdInput] = useState(() => getSavedJobId())
 
   const normalizedJob = useMemo(() => normalizeJob(job), [job])
 
@@ -38,6 +40,29 @@ function ResultPage({ apiBaseUrl }) {
     }
   }
 
+  function openResultById(event) {
+    event.preventDefault()
+    const value = jobIdInput.trim()
+    if (!value) {
+      setError('Enter a job ID to view result.')
+      return
+    }
+
+    setError('')
+    navigate(`/result/${encodeURIComponent(value)}`)
+  }
+
+  function openSavedResult() {
+    const value = getSavedJobId().trim()
+    if (!value) {
+      setError('No saved job ID found yet. Create or track a job first.')
+      return
+    }
+
+    setError('')
+    navigate(`/result/${encodeURIComponent(value)}`)
+  }
+
   return (
     <section className="page">
       <header className="page-header compact">
@@ -47,12 +72,65 @@ function ResultPage({ apiBaseUrl }) {
       </header>
 
       <article className="panel">
+        {!routeJobId && (
+          <section className="result-box">
+            <h3>Open a Job Result</h3>
+            <p className="hint">Enter a job ID to load its final status, result payload, and failure details.</p>
+
+            <form className="stack" onSubmit={openResultById}>
+              <label>
+                Job ID
+                <input
+                  type="text"
+                  value={jobIdInput}
+                  onChange={(event) => {
+                    setJobIdInput(event.target.value)
+                    if (error) setError('')
+                  }}
+                  placeholder="Paste job ID"
+                />
+              </label>
+
+              <div className="inline-actions">
+                <button type="submit">Open Result</button>
+                <button type="button" className="ghost-btn" onClick={openSavedResult}>
+                  Use Last Job ID
+                </button>
+              </div>
+            </form>
+          </section>
+        )}
+
         {isLoading && <p className="hint">Loading result...</p>}
         {error && <p className="error">{error}</p>}
 
         {job && (
           <section className="result-box">
             <h3>Job Outcome</h3>
+
+            <div className={`outcome-banner outcome-${normalizedJob.status.toLowerCase()}`}>
+              <p>
+                <strong>{normalizedJob.status}</strong> for job <strong>{normalizedJob.jobId}</strong>
+              </p>
+            </div>
+
+            <div className="summary-strip">
+              <div>
+                <p>Type</p>
+                <strong>{normalizedJob.type}</strong>
+              </div>
+              <div>
+                <p>Status</p>
+                <strong>{normalizedJob.status}</strong>
+              </div>
+              <div>
+                <p>Attempts</p>
+                <strong>
+                  {normalizedJob.attemptsMade}/{normalizedJob.attemptsStarted}
+                </strong>
+              </div>
+            </div>
+
             <dl className="details-grid">
               <div>
                 <dt>Job ID</dt>

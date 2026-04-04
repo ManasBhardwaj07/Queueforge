@@ -174,7 +174,7 @@ Minimum required keys:
 ```env
 PORT=3000
 REDIS_URL=redis://127.0.0.1:6379
-MONGO_URI=mongodb://127.0.0.1:27017/queueforge
+MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/queueforge
 JOBS_QUEUE_NAME=queueforge-jobs
 WORKER_CONCURRENCY=1
 JOB_PROCESSING_DELAY_MS=300

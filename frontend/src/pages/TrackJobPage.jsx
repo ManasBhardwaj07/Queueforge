@@ -144,6 +144,34 @@ function TrackJobPage({ apiBaseUrl }) {
         {statusResult && (
           <section className="result-box">
             <h3>Live Status</h3>
+
+            <div className="status-headline">
+              <span className={`status-badge status-${normalizedStatusResult.status.toLowerCase()}`}>
+                {normalizedStatusResult.status}
+              </span>
+              <p>
+                Job <strong>{normalizedStatusResult.jobId}</strong>
+              </p>
+            </div>
+
+            <div className="status-timeline" aria-label="Status timeline">
+              <span className={normalizedStatusResult.status === 'WAITING' ? 'timeline-pill active' : 'timeline-pill'}>
+                WAITING
+              </span>
+              <span className={normalizedStatusResult.status === 'ACTIVE' ? 'timeline-pill active' : 'timeline-pill'}>
+                ACTIVE
+              </span>
+              <span
+                className={
+                  normalizedStatusResult.status === 'COMPLETED' || normalizedStatusResult.status === 'FAILED'
+                    ? 'timeline-pill active'
+                    : 'timeline-pill'
+                }
+              >
+                TERMINAL
+              </span>
+            </div>
+
             <dl className="details-grid">
               <div>
                 <dt>Job ID</dt>
@@ -152,9 +180,7 @@ function TrackJobPage({ apiBaseUrl }) {
               <div>
                 <dt>Status</dt>
                 <dd>
-                  <span className={`status-badge status-${normalizedStatusResult.status.toLowerCase()}`}>
-                    {normalizedStatusResult.status}
-                  </span>
+                  {normalizedStatusResult.status}
                 </dd>
               </div>
               <div>
@@ -170,7 +196,9 @@ function TrackJobPage({ apiBaseUrl }) {
             </dl>
 
             {ACTIVE_STATUSES.has(normalizedStatusResult.status) && (
-              <p className="hint">Auto-refresh active every 2 seconds.</p>
+              <p className="hint live-hint">
+                <span className="live-dot" /> Auto-refresh active every 2 seconds.
+              </p>
             )}
 
             {TERMINAL_STATUSES.has(normalizedStatusResult.status) && (
@@ -178,8 +206,11 @@ function TrackJobPage({ apiBaseUrl }) {
             )}
 
             <div className="inline-actions">
-              <Link className="ghost-btn" to={`/result/${encodeURIComponent(normalizedStatusResult.jobId)}`}>
+              <Link className="action-btn" to={`/result/${encodeURIComponent(normalizedStatusResult.jobId)}`}>
                 Open Result Now
+              </Link>
+              <Link className="ghost-btn" to="/create">
+                Create Another Job
               </Link>
             </div>
           </section>
