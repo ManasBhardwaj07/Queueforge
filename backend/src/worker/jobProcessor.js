@@ -7,20 +7,20 @@ function sleep(ms) {
   });
 }
 
-function buildDelay(jobType, baseDelayMs) {
-  if (jobType === JOB_TYPES.REPORT) {
-    return Math.max(baseDelayMs, 500);
-  }
+function buildDelay(baseDelayMs) {
+  const normalizedBase = Number.isFinite(baseDelayMs) ? baseDelayMs : 300;
+  const minDelay = Math.max(normalizedBase, 1500);
+  const maxDelay = Math.max(minDelay + 500, 3000);
 
-  return Math.max(baseDelayMs, 250);
+  return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
 }
 
-function createJobProcessor({ logger = console, baseDelayMs = 300 } = {}) {
+function createJobProcessor({ logger = console, baseDelayMs = 2000 } = {}) {
   return async function processJob(job) {
     const jobType = job.data?.type || 'unknown';
     const payload = job.data?.payload || {};
 
-    const delayMs = buildDelay(jobType, baseDelayMs);
+    const delayMs = buildDelay(baseDelayMs);
     await sleep(delayMs);
 
     if (payload.simulateFailure === 'retryable') {

@@ -24,7 +24,27 @@ export function formatJsonValue(value) {
     return value
   }
 
-  return JSON.stringify(value, null, 2)
+  if (Array.isArray(value)) {
+    return value.length === 0 ? 'No items' : `${value.length} items`
+  }
+
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string' && value.message.trim()) {
+      return value.message
+    }
+
+    if (typeof value.reportName === 'string' && value.reportName.trim()) {
+      return `Report: ${value.reportName}`
+    }
+
+    if (typeof value.recipientEmail === 'string' && value.recipientEmail.trim()) {
+      return `Email sent to ${value.recipientEmail}`
+    }
+
+    return 'Details available'
+  }
+
+  return String(value)
 }
 
 export function getSavedJobId() {
