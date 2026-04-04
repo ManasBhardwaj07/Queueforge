@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
 import {
@@ -22,6 +22,30 @@ function TrackJobPage({ apiBaseUrl }) {
   const [isRedirecting, setIsRedirecting] = useState(false)
 
   const normalizedStatusResult = useMemo(() => normalizeJob(statusResult), [statusResult])
+
+  const fetchStatusById = useCallback(async (jobId, options = { silent: false }) => {
+    const { silent } = options
+
+    if (!silent) {
+      setStatusError('')
+      setStatusResult(null)
+      setIsFetchingStatus(true)
+    }
+
+    try {
+      const job = await jobsApi.getJobStatus(jobId)
+      setStatusResult(job)
+    } catch (error) {
+      setStatusError(getApiErrorMessage(error, 'Failed to fetch job status.'))
+      if (!silent) {
+        setStatusResult(null)
+      }
+    } finally {
+      if (!silent) {
+        setIsFetchingStatus(false)
+      }
+    }
+  }, [jobsApi])
 
   useEffect(() => {
     const incoming = decodeURIComponent(routeJobId || '').trim()
@@ -52,7 +76,7 @@ function TrackJobPage({ apiBaseUrl }) {
     }
 
     fetchStatusById(lookupJobId.trim(), { silent: false })
-  }, [isFetchingStatus, lookupJobId, statusResult])
+  }, [fetchStatusById, isFetchingStatus, lookupJobId, statusResult])
 
   useEffect(() => {
     if (!lookupJobId.trim() || !statusResult || !ACTIVE_STATUSES.has(statusResult.status)) {
@@ -66,7 +90,7 @@ function TrackJobPage({ apiBaseUrl }) {
     return () => {
       window.clearTimeout(timerId)
     }
-  }, [lookupJobId, statusResult])
+  }, [fetchStatusById, lookupJobId, statusResult])
 
   useEffect(() => {
     if (!statusResult || !TERMINAL_STATUSES.has(statusResult.status) || isRedirecting) {
@@ -82,30 +106,6 @@ function TrackJobPage({ apiBaseUrl }) {
       window.clearTimeout(timerId)
     }
   }, [isRedirecting, navigate, statusResult])
-
-  async function fetchStatusById(jobId, options = { silent: false }) {
-    const { silent } = options
-
-    if (!silent) {
-      setStatusError('')
-      setStatusResult(null)
-      setIsFetchingStatus(true)
-    }
-
-    try {
-      const job = await jobsApi.getJobStatus(jobId)
-      setStatusResult(job)
-    } catch (error) {
-      setStatusError(getApiErrorMessage(error, 'Failed to fetch job status.'))
-      if (!silent) {
-        setStatusResult(null)
-      }
-    } finally {
-      if (!silent) {
-        setIsFetchingStatus(false)
-      }
-    }
-  }
 
   async function handleFetchStatus(event) {
     event.preventDefault()
@@ -137,6 +137,12 @@ function TrackJobPage({ apiBaseUrl }) {
             {isFetchingStatus ? 'Checking...' : 'Get Status'}
           </button>
         </form>
+
+        {!lookupJobId.trim() && !statusResult && !statusError && (
+          <div className="empty-state">
+            <p className="hint">Paste a Job ID from Create Job to start live tracking.</p>
+          </div>
+        )}
 
         {lookupJobId.trim() && <p className="hint">Stored in browser for refresh persistence.</p>}
         {statusError && <p className="error">{statusError}</p>}

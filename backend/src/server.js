@@ -9,14 +9,44 @@ const { createJobService } = require('./services/jobService');
 
 async function startServer() {
   const env = validateEnv(loadEnv());
-  await connectMongoDB(env.mongodb);
+  const mongoConnection = await connectMongoDB(env.mongodb);
   const connection = createRedisConnection(env.redis);
   const jobService = createJobService({
     queueName: env.queueName,
     connection,
     retryConfig: env.retry,
   });
-  const app = createApp({ jobService });
+  const app = createApp({
+    jobService,
+    security: env.security,
+    readinessCheck: async () => {
+      const checks = {
+        mongodb: 'down',
+        redis: 'down',
+      };
+
+      try {
+        const mongoReady = mongoConnection?.readyState === 1;
+        if (mongoReady && mongoConnection.db?.admin) {
+          await mongoConnection.db.admin().ping();
+          checks.mongodb = 'up';
+        }
+      } catch (error) {
+        checks.mongodb = 'down';
+      }
+
+      try {
+        const redisPing = await connection.ping();
+        if (String(redisPing).toUpperCase() === 'PONG') {
+          checks.redis = 'up';
+        }
+      } catch (error) {
+        checks.redis = 'down';
+      }
+
+      return checks;
+    },
+  });
   const server = http.createServer(app);
 
   await new Promise((resolve) => {

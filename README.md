@@ -39,6 +39,13 @@ Endpoints:
 - Docker backend API: `5000`
 - Docker frontend: `3001`
 
+## Security Baseline
+
+- Keep secrets out of tracked files.
+- Use non-secret defaults in tracked env templates.
+- Inject credentials at runtime only (`MONGO_URI`, etc.) via shell, CI secrets, or host secret manager.
+- Rotate Atlas DB credentials immediately if any credential was previously exposed.
+
 ## Next Step (Phase 5)
 
 1. Switch MongoDB to Atlas

@@ -111,6 +111,79 @@ test('GET /health returns service health payload', async () => {
   }
 });
 
+test('GET /security returns active hardening controls', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({
+    jobService,
+    logger: { error() {} },
+    security: {
+      requestBodyLimit: '100kb',
+      allowedOrigins: ['http://localhost:5173', 'http://localhost:3001'],
+      rateLimitWindowMs: 900000,
+      rateLimitMax: 100,
+    },
+  });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/security`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, 'ok');
+    assert.equal(body.controls.helmet, true);
+    assert.equal(body.controls.rateLimit.max, 100);
+    assert.equal(body.controls.requestBodyLimit, '100kb');
+    assert.equal(Array.isArray(body.controls.cors.allowedOrigins), true);
+  } finally {
+    await server.close();
+  }
+});
+
+test('GET /ready returns ready when dependency checks are up', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({
+    jobService,
+    logger: { error() {} },
+    readinessCheck: async () => ({ mongodb: 'up', redis: 'up' }),
+  });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/ready`);
+    const body = await response.json();
+
+    assert.equal(response.status, 200);
+    assert.equal(body.status, 'ready');
+    assert.equal(body.checks.mongodb, 'up');
+    assert.equal(body.checks.redis, 'up');
+  } finally {
+    await server.close();
+  }
+});
+
+test('GET /ready returns not-ready when dependency checks fail', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({
+    jobService,
+    logger: { error() {} },
+    readinessCheck: async () => ({ mongodb: 'up', redis: 'down' }),
+  });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/ready`);
+    const body = await response.json();
+
+    assert.equal(response.status, 503);
+    assert.equal(body.status, 'not-ready');
+    assert.equal(body.checks.mongodb, 'up');
+    assert.equal(body.checks.redis, 'down');
+  } finally {
+    await server.close();
+  }
+});
+
 test('POST /jobs rejects invalid job payloads', async () => {
   const jobService = createMockJobService();
   const app = createApp({ jobService, logger: { error() {} } });
@@ -212,6 +285,82 @@ test('POST /jobs rejects malformed JSON', async () => {
     assert.equal(response.status, 400);
     assert.equal(body.error.code, 'INVALID_JSON');
     assert.equal(body.error.message, 'Invalid JSON payload.');
+  } finally {
+    await server.close();
+  }
+});
+
+test('POST /jobs rejects oversized payloads', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({
+    jobService,
+    logger: { error() {} },
+    security: {
+      requestBodyLimit: '200b',
+      allowedOrigins: ['http://localhost:5173'],
+      rateLimitWindowMs: 60_000,
+      rateLimitMax: 100,
+    },
+  });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/jobs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'report',
+        payload: {
+          reportName: 'a'.repeat(512),
+        },
+      }),
+    });
+
+    const body = await response.json();
+
+    assert.equal(response.status, 413);
+    assert.equal(body.error.code, 'PAYLOAD_TOO_LARGE');
+  } finally {
+    await server.close();
+  }
+});
+
+test('POST /jobs rejects disallowed CORS origin', async () => {
+  const jobService = createMockJobService();
+  const app = createApp({
+    jobService,
+    logger: { error() {} },
+    security: {
+      requestBodyLimit: '100kb',
+      allowedOrigins: ['http://localhost:5173'],
+      rateLimitWindowMs: 60_000,
+      rateLimitMax: 100,
+    },
+  });
+  const server = await startTestServer(app);
+
+  try {
+    const response = await fetch(`${server.baseUrl}/jobs`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://evil.example.com',
+      },
+      body: JSON.stringify({
+        type: 'email',
+        payload: {
+          recipientEmail: 'dev@example.com',
+          subject: 'Welcome',
+        },
+      }),
+    });
+
+    const body = await response.json();
+
+    assert.equal(response.status, 403);
+    assert.equal(body.error.code, 'CORS_FORBIDDEN');
   } finally {
     await server.close();
   }

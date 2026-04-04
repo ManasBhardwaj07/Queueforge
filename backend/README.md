@@ -103,6 +103,16 @@ Response example:
 }
 ```
 
+### GET /security
+Returns current API hardening controls (safe metadata only, no secrets).
+
+Response fields include:
+
+- `helmet` enabled state
+- rate-limit window and max values
+- CORS allow-list currently loaded
+- active JSON request body size limit
+
 ### POST /jobs
 Create and enqueue a job.
 
@@ -174,7 +184,7 @@ Minimum required keys:
 ```env
 PORT=3000
 REDIS_URL=redis://127.0.0.1:6379
-MONGO_URI=mongodb+srv://<user>:<pass>@cluster.mongodb.net/queueforge
+MONGO_URI=mongodb://127.0.0.1:27017/queueforge
 JOBS_QUEUE_NAME=queueforge-jobs
 WORKER_CONCURRENCY=1
 JOB_PROCESSING_DELAY_MS=300
@@ -183,6 +193,23 @@ JOB_RETRY_BACKOFF_DELAY_MS=2000
 ENABLE_DLQ=false
 DLQ_QUEUE_NAME=queueforge-dlq
 JOB_STALE_ACTIVE_THRESHOLD_MS=600000
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3001
+REQUEST_BODY_LIMIT=100kb
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=100
+```
+
+Production/Atlas secret handling:
+
+- Do not commit Atlas credentials into repository files.
+- Keep tracked env files non-secret (local defaults only).
+- Inject real Atlas URI at runtime only (shell env, CI secret, or host secret manager).
+
+PowerShell example:
+
+```powershell
+$env:MONGO_URI = "mongodb+srv://<user>:<pass>@cluster.mongodb.net/queueforge"
+npm run start:api
 ```
 
 ### 4) Start API and worker

@@ -11,6 +11,10 @@ const DEFAULT_MONGO_DB = 'queueforge';
 const DEFAULT_JOB_MAX_ATTEMPTS = 3;
 const DEFAULT_JOB_RETRY_BACKOFF_DELAY_MS = 2000;
 const DEFAULT_STALE_ACTIVE_THRESHOLD_MS = 10 * 60 * 1000;
+const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'http://localhost:3001'];
+const DEFAULT_REQUEST_BODY_LIMIT = '100kb';
+const DEFAULT_REQUEST_WINDOW_MS = 15 * 60 * 1000;
+const DEFAULT_REQUEST_MAX_PER_WINDOW = 100;
 
 function parseBoolean(value, fallback = false) {
   if (value === undefined || value === null || value === '') {
@@ -27,6 +31,17 @@ function parseInteger(value, fallback) {
 
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseCsv(value, fallback = []) {
+  if (value === undefined || value === null || value === '') {
+    return fallback;
+  }
+
+  return String(value)
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function loadEnv(source = process.env) {
@@ -62,6 +77,12 @@ function loadEnv(source = process.env) {
     reliability: {
       staleActiveThresholdMs: parseInteger(source.JOB_STALE_ACTIVE_THRESHOLD_MS, DEFAULT_STALE_ACTIVE_THRESHOLD_MS),
     },
+    security: {
+      allowedOrigins: parseCsv(source.CORS_ALLOWED_ORIGINS, DEFAULT_ALLOWED_ORIGINS),
+      requestBodyLimit: source.REQUEST_BODY_LIMIT || DEFAULT_REQUEST_BODY_LIMIT,
+      rateLimitWindowMs: parseInteger(source.RATE_LIMIT_WINDOW_MS, DEFAULT_REQUEST_WINDOW_MS),
+      rateLimitMax: parseInteger(source.RATE_LIMIT_MAX, DEFAULT_REQUEST_MAX_PER_WINDOW),
+    },
   };
 }
 
@@ -80,6 +101,18 @@ function validateEnv(env) {
 
   if (!Number.isInteger(env.retry?.backoffDelayMs) || env.retry.backoffDelayMs <= 0) {
     throw new Error('Invalid RETRY_DELAY');
+  }
+
+  if (typeof env.security?.requestBodyLimit !== 'string' || !env.security.requestBodyLimit.trim()) {
+    throw new Error('Invalid REQUEST_BODY_LIMIT');
+  }
+
+  if (!Number.isInteger(env.security?.rateLimitWindowMs) || env.security.rateLimitWindowMs <= 0) {
+    throw new Error('Invalid RATE_LIMIT_WINDOW_MS');
+  }
+
+  if (!Number.isInteger(env.security?.rateLimitMax) || env.security.rateLimitMax <= 0) {
+    throw new Error('Invalid RATE_LIMIT_MAX');
   }
 
   return env;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
 import { formatJsonValue, getSavedJobId, normalizeJob, saveJobId } from '../flowUtils'
@@ -15,17 +15,7 @@ function ResultPage({ apiBaseUrl }) {
 
   const normalizedJob = useMemo(() => normalizeJob(job), [job])
 
-  useEffect(() => {
-    const value = decodeURIComponent(routeJobId || '').trim()
-    if (!value) {
-      return
-    }
-
-    saveJobId(value)
-    fetchJob(value)
-  }, [routeJobId])
-
-  async function fetchJob(jobId) {
+  const fetchJob = useCallback(async (jobId) => {
     setError('')
     setIsLoading(true)
 
@@ -38,7 +28,17 @@ function ResultPage({ apiBaseUrl }) {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [jobsApi])
+
+  useEffect(() => {
+    const value = decodeURIComponent(routeJobId || '').trim()
+    if (!value) {
+      return
+    }
+
+    saveJobId(value)
+    fetchJob(value)
+  }, [fetchJob, routeJobId])
 
   function openResultById(event) {
     event.preventDefault()
@@ -72,6 +72,12 @@ function ResultPage({ apiBaseUrl }) {
       </header>
 
       <article className="panel">
+        {!routeJobId && !job && !isLoading && !error && (
+          <div className="empty-state">
+            <p className="hint">No result selected yet. Open a job result using an ID below.</p>
+          </div>
+        )}
+
         {!routeJobId && (
           <section className="result-box">
             <h3>Open a Job Result</h3>
