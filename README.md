@@ -77,9 +77,9 @@ High-level path:
   - `http://<ec2-public-ip>:3001`
   - `http://<ec2-public-ip>:5000/health`
 
-## Next Step (Phase 5)
+## Delivery Status
 
-1. Switch MongoDB to Atlas
-2. Verify stack locally with Docker
-3. Deploy to AWS EC2
-4. Run Docker Compose on EC2
+1. MongoDB Atlas integration completed.
+2. Local and Docker validation completed.
+3. AWS EC2 deployment completed.
+4. Public API and frontend smoke-tested.

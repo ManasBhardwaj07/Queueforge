@@ -285,7 +285,7 @@ Always run from backend root:
 cd C:\Users\rahul\React\queueforge\backend
 ```
 
-## Phase 4 Plan (Roadmap)
+## Delivery Roadmap
 
 ### Step 1: Minimal UI (max 1 day) - Completed
 
@@ -302,7 +302,7 @@ Goal: allow recruiters to create jobs and check job status quickly.
 - Stack: React (Vite), Axios
 - Rule: clear and simple over fancy UI
 
-### Step 2: Mongo Atlas (0.5 day) - Next
+### Step 2: Mongo Atlas (0.5 day) - Completed
 
 - Create Atlas cluster
 - Use cloud URI in env:
@@ -327,7 +327,7 @@ Keep deployment simple:
 - Clone repo, set env, run `docker compose up -d --build`
 - Expose API port (for example `5000`)
 
-### Step 5: Final polish (0.5 day) - Pre-release
+### Step 5: Final polish (0.5 day) - Completed
 
 README additions at this stage:
 
@@ -337,6 +337,6 @@ README additions at this stage:
 - API endpoints
 - Frontend API URL config (for example `API_URL=https://<ec2-ip>`)
 
-### Target System After Phase 4
+### Target System
 
 `User -> React UI -> API (EC2) -> Redis -> Worker -> Mongo Atlas`
