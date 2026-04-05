@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
-import { formatJsonValue, getSavedJobId, normalizeJob, saveJobId } from '../flowUtils'
+import { formatJsonValue, getSavedJobId, getStatusLabel, normalizeJob, saveJobId } from '../flowUtils'
 
 function ResultPage({ apiBaseUrl }) {
   const { jobId: routeJobId } = useParams()
@@ -116,7 +116,7 @@ function ResultPage({ apiBaseUrl }) {
 
             <div className={`outcome-banner outcome-${normalizedJob.status.toLowerCase()}`}>
               <p>
-                <strong>{normalizedJob.status}</strong> for job <strong>{normalizedJob.jobId}</strong>
+                <strong>{getStatusLabel(normalizedJob.status)}</strong> for job <strong>{normalizedJob.jobId}</strong>
               </p>
             </div>
 
@@ -127,7 +127,7 @@ function ResultPage({ apiBaseUrl }) {
               </div>
               <div>
                 <p>Status</p>
-                <strong>{normalizedJob.status}</strong>
+                <strong>{getStatusLabel(normalizedJob.status)}</strong>
               </div>
               <div>
                 <p>Attempts</p>
@@ -150,7 +150,7 @@ function ResultPage({ apiBaseUrl }) {
                 <dt>Status</dt>
                 <dd>
                   <span className={`status-badge status-${normalizedJob.status.toLowerCase()}`}>
-                    {normalizedJob.status}
+                    {getStatusLabel(normalizedJob.status)}
                   </span>
                 </dd>
               </div>

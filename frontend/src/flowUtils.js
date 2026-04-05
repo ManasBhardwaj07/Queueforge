@@ -2,6 +2,13 @@ export const LAST_JOB_KEY = 'queueforge:lastJobId'
 export const ACTIVE_STATUSES = new Set(['WAITING', 'ACTIVE'])
 export const TERMINAL_STATUSES = new Set(['COMPLETED', 'FAILED'])
 
+const STATUS_LABELS = Object.freeze({
+  WAITING: 'Queued',
+  ACTIVE: 'Processing',
+  COMPLETED: 'Completed',
+  FAILED: 'Failed',
+})
+
 export function normalizeJob(job) {
   return {
     jobId: job?.jobId || '-',
@@ -45,6 +52,10 @@ export function formatJsonValue(value) {
   }
 
   return String(value)
+}
+
+export function getStatusLabel(status) {
+  return STATUS_LABELS[status] || status || '-'
 }
 
 export function getSavedJobId() {

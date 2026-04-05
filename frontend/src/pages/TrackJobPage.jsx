@@ -5,6 +5,7 @@ import {
   ACTIVE_STATUSES,
   formatJsonValue,
   getSavedJobId,
+  getStatusLabel,
   normalizeJob,
   saveJobId,
   TERMINAL_STATUSES,
@@ -153,7 +154,7 @@ function TrackJobPage({ apiBaseUrl }) {
 
             <div className="status-headline">
               <span className={`status-badge status-${normalizedStatusResult.status.toLowerCase()}`}>
-                {normalizedStatusResult.status}
+                {getStatusLabel(normalizedStatusResult.status)}
               </span>
               <p>
                 Job <strong>{normalizedStatusResult.jobId}</strong>
@@ -162,10 +163,10 @@ function TrackJobPage({ apiBaseUrl }) {
 
             <div className="status-timeline" aria-label="Status timeline">
               <span className={normalizedStatusResult.status === 'WAITING' ? 'timeline-pill active' : 'timeline-pill'}>
-                WAITING
+                Queued
               </span>
               <span className={normalizedStatusResult.status === 'ACTIVE' ? 'timeline-pill active' : 'timeline-pill'}>
-                ACTIVE
+                Processing
               </span>
               <span
                 className={
@@ -174,7 +175,7 @@ function TrackJobPage({ apiBaseUrl }) {
                     : 'timeline-pill'
                 }
               >
-                TERMINAL
+                Finished
               </span>
             </div>
 
@@ -186,7 +187,7 @@ function TrackJobPage({ apiBaseUrl }) {
               <div>
                 <dt>Status</dt>
                 <dd>
-                  {normalizedStatusResult.status}
+                  {getStatusLabel(normalizedStatusResult.status)}
                 </dd>
               </div>
               <div>

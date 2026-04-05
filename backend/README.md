@@ -27,6 +27,11 @@ Distributed job processing backend built with Node.js, Express, BullMQ, Redis, a
     - `.env.development` for local host runs
     - `.env.docker` for container service-name networking
   - End-to-end queue flow validated in containers (create -> process -> status)
+- Phase 5 (Deployment-Ready Polish): Completed
+  - Worker processing delay tuned for visible lifecycle transitions in UI demos
+  - User-facing status labels simplified in frontend (`Queued`, `Processing`, `Completed`, `Failed`)
+  - Raw JSON output removed from user-facing result screens
+  - EC2 deployment smoke-tested with public API/frontend reachability
 
 ## Tech Stack
 
@@ -161,9 +166,9 @@ docker run -d --name queueforge-mongo -p 27017:27017 mongo
 Environment profile files:
 
 - `.env.example`: reference template
-- `.env.development`: local/dev defaults
-- `.env.docker`: Docker/Compose profile (`mongo`, `redis`, `PORT=5000`)
-- `.env.production`: production-style placeholders
+- `.env.development`: local/dev defaults (local file, not tracked)
+- `.env.docker`: Docker/Compose profile (`mongo`, `redis`, `PORT=5000`) (local/server file, not tracked)
+- `.env.production`: production-style profile (local/server file, not tracked)
 
 Node reads from `.env`, so copy the profile you want to run:
 
@@ -248,6 +253,22 @@ Use `GET /jobs/:id` to verify terminal metadata:
 - `finalFailureReason`
 - `retryAttemptsExhausted`
 
+## Lifecycle and UI Mapping
+
+Backend lifecycle values:
+
+- `WAITING`
+- `ACTIVE`
+- `COMPLETED`
+- `FAILED`
+
+Frontend display mapping:
+
+- `WAITING` -> `Queued`
+- `ACTIVE` -> `Processing`
+- `COMPLETED` -> `Completed`
+- `FAILED` -> `Failed`
+
 ## Common Issues
 
 ### Port 3000 already in use
@@ -294,16 +315,16 @@ Goal: allow recruiters to create jobs and check job status quickly.
 Goal: run the system with one command.
 
 - Containers: API, Worker, Redis, optional local Mongo
-- Use Docker Compose: `docker-compose up`
+- Use Docker Compose v2: `docker compose up`
 - Ensure container networking and env wiring are correct
 
-### Step 4: AWS Deployment (1-2 days) - Next
+### Step 4: AWS Deployment (1-2 days) - Completed (smoke-tested)
 
 Keep deployment simple:
 
 - Use EC2 (Ubuntu)
 - Install Node + Docker
-- Clone repo, set env, run `docker-compose up -d`
+- Clone repo, set env, run `docker compose up -d --build`
 - Expose API port (for example `5000`)
 
 ### Step 5: Final polish (0.5 day) - Pre-release
