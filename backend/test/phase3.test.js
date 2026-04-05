@@ -132,6 +132,52 @@ test('job processor throws typed permanent error for terminal failure simulation
   );
 });
 
+test('report job builds deterministic summary when rows are provided', async () => {
+  const processJob = createJobProcessor({ logger: { info() {} }, baseDelayMs: 1 });
+
+  const result = await processJob({
+    id: 'summary-1',
+    data: {
+      type: 'report',
+      payload: {
+        reportName: 'weekly-metrics',
+        rows: [
+          { team: 'A', score: 10, active: true },
+          { team: 'B', score: 15, active: false },
+        ],
+      },
+    },
+  });
+
+  assert.equal(result.reportName, 'weekly-metrics');
+  assert.equal(result.reportSummary.rowCount, 2);
+  assert.equal(result.reportSummary.fieldCount, 3);
+  assert.deepEqual(result.reportSummary.fields, ['active', 'score', 'team']);
+  assert.equal(result.reportSummary.numericValues, 2);
+  assert.equal(result.reportSummary.numericSum, 25);
+  assert.equal(typeof result.reportSummary.checksum, 'string');
+  assert.equal(result.reportSummary.checksum.length, 64);
+});
+
+test('report job remains backward compatible when rows are not provided', async () => {
+  const processJob = createJobProcessor({ logger: { info() {} }, baseDelayMs: 1 });
+
+  const result = await processJob({
+    id: 'summary-2',
+    data: {
+      type: 'report',
+      payload: {
+        reportName: 'legacy-report',
+      },
+    },
+  });
+
+  assert.equal(result.message, 'Report job processed successfully.');
+  assert.equal(result.reportName, 'legacy-report');
+  assert.equal(result.reportSummary.rowCount, 0);
+  assert.equal(result.reportSummary.fieldCount, 0);
+});
+
 test('env parsing applies phase-3 reliability defaults and flags', () => {
   const env = loadEnv({
     MONGO_URI: 'mongodb://mongo.test:27017/queueforge',

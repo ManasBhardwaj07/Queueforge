@@ -10,6 +10,8 @@ A production-style asynchronous job processing system built with Node.js, BullMQ
 - Failure classification (retryable vs permanent errors)
 - Persistent job lifecycle tracking (MongoDB as source of truth)
 - Real-time job status tracking via API
+- Real report processing workload (row profiling + checksum generation)
+- Rate limiting to protect API behavior under burst traffic
 - Dockerized multi-service deployment
 - Production-ready environment configuration
 
@@ -77,6 +79,27 @@ docker-compose up --build
 ```
 
 Note: `docker compose` (v2) is preferred when available.
+
+MongoDB deployment mode:
+- Production/demo deployment uses MongoDB Atlas via `MONGO_URI`.
+- The `mongo` service in `docker-compose.yml` is intended for local development fallback only.
+
+## Concurrency Validation
+
+Live burst test (April 2026, EC2 deployment):
+- Submitted: 10 report jobs back-to-back
+- Terminal states reached: 10/10
+- Completed: 10
+- Failed: 0
+- Total time to terminal states: 19 seconds
+
+Observed behavior under burst traffic:
+- API accepts jobs immediately and returns `WAITING`.
+- Worker transitions jobs through `ACTIVE` to terminal state.
+- Retryable failures (when simulated) re-enter `WAITING` with backoff and preserve attempt counters.
+- Terminal failures persist `finalFailureReason` for postmortem analysis.
+
+This demonstrates queue-driven decoupling and stable behavior under short traffic spikes.
 
 ## Live Demo
 
