@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
 import {
   ACTIVE_STATUSES,
   formatJsonValue,
-  getSavedJobId,
   getStatusLabel,
   normalizeJob,
   saveJobId,
@@ -21,21 +20,59 @@ function TrackJobPage({ apiBaseUrl }) {
   const [statusError, setStatusError] = useState('')
   const [isFetchingStatus, setIsFetchingStatus] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [displayStatus, setDisplayStatus] = useState('')
+  const [isTimelineReplaying, setIsTimelineReplaying] = useState(false)
+  const timelineTimersRef = useRef([])
 
   const normalizedStatusResult = useMemo(() => normalizeJob(statusResult), [statusResult])
+  const visibleStatus = displayStatus || normalizedStatusResult.status
+
+  const clearTimelineReplay = useCallback(() => {
+    timelineTimersRef.current.forEach((timerId) => {
+      window.clearTimeout(timerId)
+    })
+    timelineTimersRef.current = []
+    setDisplayStatus('')
+    setIsTimelineReplaying(false)
+  }, [])
+
+  const replayTerminalTimeline = useCallback((terminalStatus) => {
+    clearTimelineReplay()
+    setIsTimelineReplaying(true)
+    setDisplayStatus('WAITING')
+
+    const toActive = window.setTimeout(() => {
+      setDisplayStatus('ACTIVE')
+    }, 1100)
+
+    const toTerminal = window.setTimeout(() => {
+      setDisplayStatus(terminalStatus)
+      setIsTimelineReplaying(false)
+    }, 2600)
+
+    timelineTimersRef.current = [toActive, toTerminal]
+  }, [clearTimelineReplay])
 
   const fetchStatusById = useCallback(async (jobId, options = { silent: false }) => {
-    const { silent } = options
+    const { silent, replayTerminal } = options
 
     if (!silent) {
       setStatusError('')
       setStatusResult(null)
       setIsFetchingStatus(true)
+      if (!replayTerminal) {
+        clearTimelineReplay()
+      }
     }
 
     try {
       const job = await jobsApi.getJobStatus(jobId)
       setStatusResult(job)
+      saveJobId(job.jobId)
+
+      if (!silent && replayTerminal && TERMINAL_STATUSES.has(job.status)) {
+        replayTerminalTimeline(job.status)
+      }
     } catch (error) {
       setStatusError(getApiErrorMessage(error, 'Failed to fetch job status.'))
       if (!silent) {
@@ -46,37 +83,22 @@ function TrackJobPage({ apiBaseUrl }) {
         setIsFetchingStatus(false)
       }
     }
-  }, [jobsApi])
+  }, [clearTimelineReplay, jobsApi, replayTerminalTimeline])
 
   useEffect(() => {
     const incoming = decodeURIComponent(routeJobId || '').trim()
     if (incoming) {
       setLookupJobId(incoming)
-      saveJobId(incoming)
       return
-    }
-
-    const saved = getSavedJobId().trim()
-    if (saved) {
-      setLookupJobId(saved)
     }
   }, [routeJobId])
-
-  useEffect(() => {
-    const value = lookupJobId.trim()
-    if (!value) {
-      return
-    }
-
-    saveJobId(value)
-  }, [lookupJobId])
 
   useEffect(() => {
     if (!lookupJobId.trim() || statusResult || isFetchingStatus) {
       return
     }
 
-    fetchStatusById(lookupJobId.trim(), { silent: false })
+    fetchStatusById(lookupJobId.trim(), { silent: false, replayTerminal: true })
   }, [fetchStatusById, isFetchingStatus, lookupJobId, statusResult])
 
   useEffect(() => {
@@ -94,30 +116,36 @@ function TrackJobPage({ apiBaseUrl }) {
   }, [fetchStatusById, lookupJobId, statusResult])
 
   useEffect(() => {
-    if (!statusResult || !TERMINAL_STATUSES.has(statusResult.status) || isRedirecting) {
+    if (!statusResult || !TERMINAL_STATUSES.has(visibleStatus) || isRedirecting) {
       return
     }
 
     setIsRedirecting(true)
     const timerId = window.setTimeout(() => {
       navigate(`/result/${encodeURIComponent(statusResult.jobId)}`)
-    }, 1400)
+    }, 1800)
 
     return () => {
       window.clearTimeout(timerId)
     }
-  }, [isRedirecting, navigate, statusResult])
+  }, [isRedirecting, navigate, statusResult, visibleStatus])
+
+  useEffect(() => {
+    return () => {
+      clearTimelineReplay()
+    }
+  }, [clearTimelineReplay])
 
   async function handleFetchStatus(event) {
     event.preventDefault()
     setIsRedirecting(false)
-    await fetchStatusById(lookupJobId.trim(), { silent: false })
+    await fetchStatusById(lookupJobId.trim(), { silent: false, replayTerminal: true })
   }
 
   return (
     <section className="page">
       <header className="page-header compact">
-        <p className="tag">Step 2</p>
+        <p className="tag">Track</p>
         <h1>Track Job</h1>
         <p className="subtitle">Live queue updates are automatic while status is WAITING or ACTIVE.</p>
       </header>
@@ -129,7 +157,13 @@ function TrackJobPage({ apiBaseUrl }) {
             <input
               type="text"
               value={lookupJobId}
-              onChange={(event) => setLookupJobId(event.target.value)}
+              onChange={(event) => {
+                setLookupJobId(event.target.value)
+                setStatusResult(null)
+                setStatusError('')
+                setIsRedirecting(false)
+                clearTimelineReplay()
+              }}
               placeholder="paste job id"
               required
             />
@@ -145,7 +179,6 @@ function TrackJobPage({ apiBaseUrl }) {
           </div>
         )}
 
-        {lookupJobId.trim() && <p className="hint">Stored in browser for refresh persistence.</p>}
         {statusError && <p className="error">{statusError}</p>}
 
         {statusResult && (
@@ -153,8 +186,8 @@ function TrackJobPage({ apiBaseUrl }) {
             <h3>Live Status</h3>
 
             <div className="status-headline">
-              <span className={`status-badge status-${normalizedStatusResult.status.toLowerCase()}`}>
-                {getStatusLabel(normalizedStatusResult.status)}
+              <span className={`status-badge status-${visibleStatus.toLowerCase()}`}>
+                {getStatusLabel(visibleStatus)}
               </span>
               <p>
                 Job <strong>{normalizedStatusResult.jobId}</strong>
@@ -162,15 +195,15 @@ function TrackJobPage({ apiBaseUrl }) {
             </div>
 
             <div className="status-timeline" aria-label="Status timeline">
-              <span className={normalizedStatusResult.status === 'WAITING' ? 'timeline-pill active' : 'timeline-pill'}>
+              <span className={visibleStatus === 'WAITING' ? 'timeline-pill active' : 'timeline-pill'}>
                 Queued
               </span>
-              <span className={normalizedStatusResult.status === 'ACTIVE' ? 'timeline-pill active' : 'timeline-pill'}>
+              <span className={visibleStatus === 'ACTIVE' ? 'timeline-pill active' : 'timeline-pill'}>
                 Processing
               </span>
               <span
                 className={
-                  normalizedStatusResult.status === 'COMPLETED' || normalizedStatusResult.status === 'FAILED'
+                  visibleStatus === 'COMPLETED' || visibleStatus === 'FAILED'
                     ? 'timeline-pill active'
                     : 'timeline-pill'
                 }
@@ -187,7 +220,7 @@ function TrackJobPage({ apiBaseUrl }) {
               <div>
                 <dt>Status</dt>
                 <dd>
-                  {getStatusLabel(normalizedStatusResult.status)}
+                  {getStatusLabel(visibleStatus)}
                 </dd>
               </div>
               <div>
@@ -208,7 +241,11 @@ function TrackJobPage({ apiBaseUrl }) {
               </p>
             )}
 
-            {TERMINAL_STATUSES.has(normalizedStatusResult.status) && (
+            {isTimelineReplaying && (
+              <p className="hint">Showing queue flow sequence for clarity...</p>
+            )}
+
+            {TERMINAL_STATUSES.has(visibleStatus) && (
               <p className="hint">Terminal state reached. Redirecting to detailed result page...</p>
             )}
 

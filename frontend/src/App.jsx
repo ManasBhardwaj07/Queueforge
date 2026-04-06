@@ -76,7 +76,7 @@ function App() {
                 : 'rail-node'
             }
           >
-            <span className="rail-index">{index + 1}</span>
+            <span className="rail-index" aria-hidden="true">•</span>
             <div>
               <p className="rail-title">{step.title}</p>
               <p className="rail-description">{step.description}</p>

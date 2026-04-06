@@ -14,17 +14,17 @@ function OverviewPage() {
 
       <section className="timeline-grid">
         <article className="timeline-card">
-          <p className="timeline-step">Step 1</p>
+          <p className="timeline-step">Create</p>
           <h2>Submit</h2>
           <p>Choose email or report, complete the form, and get your job ID instantly.</p>
         </article>
         <article className="timeline-card">
-          <p className="timeline-step">Step 2</p>
+          <p className="timeline-step">Track</p>
           <h2>Follow Progress</h2>
           <p>Watch status changes from waiting to active and see retry attempts automatically.</p>
         </article>
         <article className="timeline-card">
-          <p className="timeline-step">Step 3</p>
+          <p className="timeline-step">Review</p>
           <h2>Review Outcome</h2>
           <p>Check final result details, or clear failure reasons with all metadata in one view.</p>
         </article>

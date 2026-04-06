@@ -83,7 +83,7 @@ function CreateJobPage({ apiBaseUrl }) {
   return (
     <section className="page">
       <header className="page-header compact">
-        <p className="tag">Step 1</p>
+        <p className="tag">Create</p>
         <h1>Create Job</h1>
         <p className="subtitle">Fill one short form. After submit, you will be redirected to live tracking automatically.</p>
       </header>

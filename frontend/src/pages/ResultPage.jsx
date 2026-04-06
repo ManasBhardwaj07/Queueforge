@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createJobsApi, getApiErrorMessage } from '../api/jobsApi'
-import { formatJsonValue, getSavedJobId, getStatusLabel, normalizeJob, saveJobId } from '../flowUtils'
+import { formatJsonValue, getStatusLabel, normalizeJob, saveJobId } from '../flowUtils'
 
 function ResultPage({ apiBaseUrl }) {
   const { jobId: routeJobId } = useParams()
@@ -11,7 +11,7 @@ function ResultPage({ apiBaseUrl }) {
   const [job, setJob] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
-  const [jobIdInput, setJobIdInput] = useState(() => getSavedJobId())
+  const [jobIdInput, setJobIdInput] = useState('')
 
   const normalizedJob = useMemo(() => normalizeJob(job), [job])
 
@@ -52,21 +52,10 @@ function ResultPage({ apiBaseUrl }) {
     navigate(`/result/${encodeURIComponent(value)}`)
   }
 
-  function openSavedResult() {
-    const value = getSavedJobId().trim()
-    if (!value) {
-      setError('No saved job ID found yet. Create or track a job first.')
-      return
-    }
-
-    setError('')
-    navigate(`/result/${encodeURIComponent(value)}`)
-  }
-
   return (
     <section className="page">
       <header className="page-header compact">
-        <p className="tag">Step 3</p>
+        <p className="tag">Result</p>
         <h1>Result Review</h1>
         <p className="subtitle">Final audit view for the job lifecycle and output.</p>
       </header>
@@ -99,9 +88,6 @@ function ResultPage({ apiBaseUrl }) {
 
               <div className="inline-actions">
                 <button type="submit">Open Result</button>
-                <button type="button" className="ghost-btn" onClick={openSavedResult}>
-                  Use Last Job ID
-                </button>
               </div>
             </form>
           </section>
